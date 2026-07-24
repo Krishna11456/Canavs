@@ -1,0 +1,23 @@
+
+
+1) The Initial Visit:-
+       You type localhost:3000/ and press Enter.
+       The browser loads your React app.
+       The Router wakes up, looks at the Address Bar (/), checks its <Routes> list, finds <Route path="/" element={<Landing />} />, and renders the Landing page.
+
+
+2) useNavigate (The Instigator) =>(on clicking create board button)
+       You click the button, which triggers Maps('/board/x7b9q2').
+
+
+3) The Router (The Reactor)
+        The moment the Address Bar changes, the Router hears an alarm go off.
+        It immediately scans its list of <Routes>.
+        It sees <Route path="/board/:roomId" element={<CanvasRoomWrapper />} />.
+        It realizes the new URL matches this path. It instantly unmounts (destroys) the Landing Page and mounts (renders) the CanvasRoomWrapper component.
+
+4) useParams (The Late Arrival)
+        Now that the CanvasRoomWrapper is actively rendering on the screen, its code runs top-to-bottom.
+        It hits const params = useParams();.
+        useParams looks up at the current Address Bar, sees /board/x7b9q2, compares it to the Router's blueprint (/board/:roomId), and extracts the variable.
+        It hands { roomId: 'x7b9q2' } to your component so you can pass it to your WebSocket server.

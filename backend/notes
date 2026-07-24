@@ -1,0 +1,262 @@
+ // PREVIOUS ONE (BUGGED due to BLOB..(binary large object...?))
+
+
+// Node.js doesn't have Blobs. Instead, Node.js handles raw binary data using something called a Buffer.
+// When your React app fires { type: "shape:new" } over the internet, it travels through the wires as
+// electricity (zeros and ones). When it hits your Node.js server, the ws library hands it to your callback
+// function exactly as it arrived: as a raw binary Buffer.
+
+// IF it were express it implicitly handles these binary data like gatekeeper
+
+
+ // when recieved messageASString we were parsing it to JSON
+ // but when sending we were sending, original incoming data, i.e,  client.send(messageAsString);
+ // and this was blob data so problem, as broswer side isn't smart enough...? 
+
+ // here we corrected and will sentmessageData, which is parsed
+
+ // "BUT" .sent() only accepts two data type(wriiten down) so we xonvert this again to that and sent
+
+ // So, this updated code should work...?
+
+ // "BUT...."(final but) i am exhausted now to copy paste again, in case any other error occurs...OMG
+ // so, try in future when have energy for this...
+
+
+
+ // Import the WebSocket library we installed
+const WebSocket = require('ws');
+
+// 1. THE PORT: Start the server and tell it to listen on "door" 8080
+const wss = new WebSocket.Server({ port: 8080 });
+
+console.log("🚦 Canvas Traffic Controller is running on ws://localhost:8080");
+
+// This runs every time a new browser connects
+wss.on('connection', function connection(ws) {
+  
+  console.log("👋 A new user connected to the canvas!");
+
+  // This runs when THIS specific user sends us data
+  ws.on('message', function incoming(messageAsString) {
+    
+    // WebSockets only send text (strings). We have to translate that string 
+    // back into a JavaScript object so we can read it.
+    const messageData = JSON.parse(messageAsString);   // js-object
+    console.log("📦 Received an update:", messageData.type);
+
+    const sentableData = JSON.stringify(messageData);
+
+    // 4. THE BROADCASTER: Time to relay the message to everyone else
+    // 'wss.clients' is a list of every single user currently connected to the server.
+    wss.clients.forEach(function each(client) {
+      
+      // LOOP PREVENTION CHECK:
+      // condition 1: Is this client's pipe currently open and ready?
+      // condition 2: Is this client NOT the person who just sent the message?
+      if (client.readyState === WebSocket.OPEN && client !== ws) {
+        
+        // If it's a different user, send the exact same string to them!
+        client.send(sentableData);   // .send() accepts two types only :- Raw Binary AND Pure Text (Strings)
+        
+      }
+    });
+
+  });
+
+  // What to do when a user closes their browser tab
+  ws.on('close', () => {
+    console.log("🏃‍♂️ A user left the canvas.");
+  });
+
+});
+
+
+
+// ABOUT node js error handling
+/* Node.js operates on a single-thread event loop. If your code encounters an unhandled runtime error—like trying 
+  to read a property from an undefined key—it throws an exception. If that exception isn't caught, Node.js 
+  immediately terminates the entire process to prevent data corruption. */
+
+
+
+// the WebSocket library does the heavy lifting of allocating the memory, organizing the incoming packets, 
+// and handing the final data to your server.reality is that the "pipe" itself is actually created by your
+// computer's operating system (using a protocol called TCP).
+
+
+
+
+// <---- STEPS ---->
+
+// When you type socketRef.current.send(payload) in React, the browser doesn't just blindly shove your text into
+// the pipe. The WebSocket protocol strictly dictates that data must be packaged into a WebSocket Frame.
+
+
+// The browser's built-in WebSocket engine takes your JSON, measures exactly how many bytes it is, and wraps it in a digital envelope. This envelope includes:
+//  1)  The Opcode: A label telling the server "This envelope contains Text" (or Binary).
+//  2)  The Payload Length: "This envelope is exactly 124 bytes long."
+//  3) The Masking Key: A security feature that slightly scrambles the data so routers on the internet don't accidentally misread it.
+
+
+// Once the browser has built this Frame, it hands it to your computer's Operating System. The OS sends it across the internet as raw electrical pulses over a TCP Connection.
+
+
+// On your Node.js backend, the raw electrical data arrives at your server's open port (8080).
+// Here is where the ws library you installed does its magic:
+
+/* 1) The Catch: It reads the raw TCP stream and sees a WebSocket Frame arriving.
+   2) The Allocation: It looks at the "Payload Length" header on the envelope (e.g., 124 bytes). It immediately turns to your computer's RAM and says, "Reserve a Buffer exactly 124 bytes long to hold this incoming data."
+   3) The Unmasking: It uses the security key to unscramble the data back into your original JSON.
+   4) The Handoff: Once the data is completely assembled in memory, the ws library taps your Node.js code on the shoulder and says, "Wake up! I have data for you." That is the exact moment your ws.on('message', ...) function is triggered. 
+*/
+
+
+
+
+/* 
+Remove the Browser API: Your frontend JavaScript has no security privileges to access your computer's Wi-Fi or Ethernet card to open a persistent TCP connection. The browser API is required to safely bridge your React code to the physical network layer.
+Remove the Protocol: If there is no standard rulebook, the browser and the server would send 1s and 0s in completely different formats and instantly crash when trying to parse each other's data.
+Remove Node.js: You have no backend environment. You cannot run JavaScript on a server, and you cannot open port 8080 to listen for incoming connections.
+Remove the ws library: Node.js successfully opens port 8080, but when the browser sends a WebSocket frame, native Node.js reads the data, doesn't recognize the specific framing headers, and either drops the connection or hands your code a useless, scrambled buffer of binary data. 
+*/
+
+
+// Why server...?
+// ws library only speaks "WebSocket data frames." It does not know how to answer a standard HTTP request.
+// The Server is the Front Door: An HTTP Server sits at port 8080 and listens.
+// The HTTP Knock: Your React browser sends a perfectly normal, standard HTTP GET request to the server.
+// The Handoff: The Node.js HTTP Server reads this request. It says, "Ah, you don't want a standard web page; you want to upgrade your connection to websocet...?" 
+// The WebSocket Takes Over
+
+
+
+
+
+
+// OLD EFFECT(for websocket.., inital one)
+
+  // --- NEW: Establish the WebSocket Connection ---
+  useEffect(() => {
+    // 1. Knock on the door
+    socketRef.current = new WebSocket('ws://localhost:8080');
+
+    // 2. The server answered
+    socketRef.current.onopen = () => {
+      console.log("🟢 Connected to the real-time canvas server!");
+    };
+
+    // 3. The server shouted a message down the pipe
+    socketRef.current.onmessage = (event) => {
+      const incomingMessage = JSON.parse(event.data);
+      
+      if (incomingMessage.type === 'shape:new') {
+        // Push the remote shape directly into our local memory array!
+        objectsRef.current.push(incomingMessage.data);
+      }
+    };
+
+    // Cleanup: close the pipe if the user leaves the page
+    return () => {
+      socketRef.current.close();
+    };
+  }, []);
+
+
+
+
+
+
+
+
+// THIS IS ORIGINAL 'server.js', replaced when bought room
+
+
+// Import the WebSocket library we installed
+const WebSocket = require('ws');
+
+// 1. THE PORT: Start the server and tell it to listen on "door" 8080
+const wss = new WebSocket.Server({ port: 8080 });
+
+
+// store drawn shapes...so if logged in future and not in reaal time.. still able to draw
+let serverShapes = [];
+
+console.log("🚦 Canvas Traffic Controller is running on ws://localhost:8080");
+
+// This runs every time a new browser connects
+wss.on('connection', function connection(ws) {
+  
+  console.log("👋 A new user connected to the canvas!");
+    
+    // The moment they join, package up the entire Master Database and send it to them.
+    const syncPayload = JSON.stringify({
+        type: 'sync:full',
+        data: serverShapes
+    })
+
+    ws.send(syncPayload);
+
+  // This runs when THIS specific user sends us data
+  ws.on('message', function incoming(rawData) {
+
+    // WebSockets only send text (strings). We have to translate that string 
+    // back into a JavaScript object so we can read it.
+    const messageData = JSON.parse(rawData);   // js-object(i.e, incoming raw binary -> parse in json -> stringify it -> send)
+
+    // 1. MEMORIZE THE ID! Every time they move their cursor, attach their React ID to the socket.
+    if (messageData.type === 'cursor:move') {
+        ws.reactUserId = messageData.data.id; 
+    }
+    if(messageData.type === 'shape:new'){
+        serverShapes.push(messageData.data);
+    }
+    else if(messageData.type === 'shape:move'){
+        const shapeToUpdate = serverShapes.find((shape) => shape.id === messageData.data.id);
+
+        if(shapeToUpdate){
+            shapeToUpdate.x = messageData.data.x;
+            shapeToUpdate.y = messageData.data.y;
+        }
+    }
+    else if(messageData.type == 'shape:delete'){
+        serverShapes = serverShapes.filter((shape) => shape.id !== messageData.data.id);
+    }
+
+    const sentableData = JSON.stringify(messageData);
+
+    wss.clients.forEach(function each(client) {
+      
+      if (client.readyState === WebSocket.OPEN && client !== ws) {
+
+        client.send(sentableData);   // .send() accepts two types only :- Raw Binary AND Pure Text (Strings)
+        
+      }
+    });
+
+  });
+
+
+  ws.on('close', () => {
+    if (ws.reactUserId) {
+        console.log("🏃‍♂️ A user left the canvas.");
+
+    //Tell everyone else to erase this user's cursor!
+    const leavePayload = JSON.stringify({
+        type: 'user:leave',
+        data: { id: ws.reactUserId }
+    });
+
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(leavePayload);
+        }
+    })
+    }
+    
+  });
+
+})
+
+
+
