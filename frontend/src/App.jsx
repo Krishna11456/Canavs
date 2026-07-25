@@ -15,6 +15,9 @@ function App(){
 
   return(
     <BrowserRouter>
+      <div style={{ position: 'fixed', top: 0, left: 0, background: 'yellow', color: 'black', padding: '10px', zIndex: 99999 }}>
+        React is mounting! The router sees this path: {window.location.pathname}
+      </div>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/board/:roomId" element={<CanvasRoomWrapper />} />
